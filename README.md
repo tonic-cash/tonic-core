@@ -14,7 +14,7 @@ This repository contains core smart contracts for [**Tonic**](https://tonic.cash
 
 ### 🌪️ Audits (Tornado Cash)
 
-Tonic is a project forked from Tornado Cash. Tornado Cash received security audits for cryptographic technology, smart contracts, and ZK-SNARK circuits through [ABDK Consulting](https://www.abdk.consulting) in November 2019. You can find their reports under [here](audit/tornado-cash/).
+Tonic is a project forked from [Tornado Cash](https://github.com/tornadocash). Tornado Cash received security audits for cryptographic technology, smart contracts, and ZK-SNARK circuits through [ABDK Consulting](https://www.abdk.consulting) in November 2019. You can find their reports under [here](audit/tornado-cash/), under our `audit/tornado-cash` folder.
 
 Given the minor changes made in this fork, which do not affect the fundamental aspects of the original project, it is not necessary to undergo another security audit. Relying on the robust security evaluations conducted for Tornado Cash is reasonable, as the core functionality remains largely unaltered.
 
@@ -99,7 +99,7 @@ uint256 public numberOfWithdrawals;
 
 **4. Implemented TonicFeePolicyManager to manage the policy of withdrawal fees:**
 
-Tonic employs the newly-added `TonicFeePolicyManager` contract to manage withdrawal fee policies. You can view the contract [here](./contracts/TonicFeePolicyManager.sol).
+Tonic employs the newly-added `TonicFeePolicyManager` contract to manage withdrawal fee policies. You can view the code [here](./contracts/TonicFeePolicyManager.sol).
 Our contracts have the `feePolicyManager` state (which is set by the initial `constructor` and cannot be changed afterward) and include three internal view functions: `_feeNumerator()`, `_feeDenominator()`, and `_treasury()`. These functions return the fee numerator, fee denominator, and treasury address, respectively, querying the `TonicFeePolicyManager` with each call.
 
 In the `_processWithdraw` function within the Tonic instances, the `treasuryFee` is calculated, and the `recipientAmount` is determined by subtracting the `treasuryFee` and `_relayerFee` from the denomination.
