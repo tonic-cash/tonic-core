@@ -7,7 +7,7 @@
     "hoistingLimits": "workspaces"
   },
   "keywords": [],
-  "author": "",
+  "author": "Tonic <toniccash@proton.me>",
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.8.2"
