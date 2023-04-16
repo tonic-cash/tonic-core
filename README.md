@@ -46,7 +46,44 @@ function onKIP7Received(
     }
 ```
 
-**2. Added state variables to keep track of stats, enabling queries in our frontend app:**
+**2. Make it possible for the `owner` to withdraw unrelated tokens(airdrops) from the contract:**
+
+The fork incorporates the `Ownable` functionality, allowing the `owner` of the contract to withdraw unrelated tokens, **such as tokens received through airdrops** (this is why we implemented `IKIP7Receiver` for `ETHTonic` as well).
+
+This feature provides more control and flexibility for the contract owner in managing unexpected token transfers to the contract.
+
+```solidity
+// ETHTonic (Tonic Instance for Native Tokens)
+...
+
+// Only contract-based tokens, just in case for airdrops!
+receive() external payable {}
+
+function transfer(address _recipient, address _token, uint256 _amount) external onlyOwner {
+    IToken token = IToken(_token);
+    token.transfer(_recipient, _amount);
+}
+```
+
+```solidity
+// ERC20Tonic (Tonic instance of ERC20/KIP7)
+...
+
+// Only 1) native token and 2) contract-based tokens that is not deposit token, just in case for airdrops!
+receive() external payable {}
+
+function transfer(address _recipient, uint256 _amount) external onlyOwner {
+    payable(_recipient).transfer(_amount);
+}
+
+function transfer(address _recipient, address _tokenAddr, uint256 _amount) external onlyOwner {
+    require(_tokenAddr != address(token), "token address should not be the same as deposit token");
+    IToken transferableToken = IToken(_tokenAddr);
+    transferableToken.transfer(_recipient, _amount);
+}
+```
+
+**3. Added state variables to keep track of stats, enabling queries in our frontend app:**
 
 The fork introduces two new state variables, `numberOfDeposits` and `numberOfWithdrawals`, to maintain statistics on the number of deposits and withdrawals. This allows users to access these statistics through the frontend app using multicall.
 
@@ -56,27 +93,32 @@ uint256 public numberOfDeposits;
 uint256 public numberOfWithdrawals;
 ```
 
-**3. Implemented TonicFeePolicyManager to manage the policy of withdrawal fees:**
+**4. Implemented TonicFeePolicyManager to manage the policy of withdrawal fees:**
 
 Tonic employs the newly-added `TonicFeePolicyManager` contract to manage withdrawal fee policies. You can view the contract [here](./contracts/TonicFeePolicyManager.sol).
 Our contracts have the `feePolicyManager` state (which is set by the initial `constructor` and cannot be changed afterward) and include three internal view functions: `_feeNumerator()`, `_feeDenominator()`, and `_treasury()`. These functions return the fee numerator, fee denominator, and treasury address, respectively, querying the `TonicFeePolicyManager` with each call.
 
 In the `_processWithdraw` function within the Tonic instances, the `treasuryFee` is calculated, and the `recipientAmount` is determined by subtracting the `treasuryFee` and `_relayerFee` from the denomination.
 
-- For `ETHTonic` (Tonic Instance for Native Tokens), the `treasuryFee` is transferred to the treasury address.
-- For `ERC20Tonic` (Tonic instance of ERC20/KIP7), the `treasuryFee` is safely transferred to the treasury address using the `safeTransfer` function.
-
 ```solidity
 // Tonic instances
 uint256 treasuryFee = (denomination * _feeNumerator()) / _feeDenominator();
 uint256 recipientAmount = denomination - treasuryFee - _relayerFee;
+```
 
+For `ETHTonic` (Tonic Instance for Native Tokens), the `treasuryFee` is transferred to the treasury address.
+
+```solidity
 // ETHTonic (Tonic Instance for Native Tokens)
 if (treasuryFee > 0) {
     (bool feeSuccess, ) = _treasury().call{ value: treasuryFee }("");
     require(feeSuccess, "payment to treasury did not go thru");
 }
+```
 
+For `ERC20Tonic` (Tonic instance of ERC20/KIP7), the `treasuryFee` is safely transferred to the treasury address using the `safeTransfer` function.
+
+```solidity
 // ERC20Tonic (Tonic instance of ERC20/KIP7)
 if (treasuryFee > 0) {
     token.safeTransfer(_treasury(), treasuryFee);
