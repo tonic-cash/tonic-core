@@ -4,6 +4,8 @@
 
 ![Diagram for Protocol Flow](./.github/assets/tonic-diagram.jpg)
 
+> This is how Tonic works under the hood. (v2023.04)
+
 ## 🛡️ Security
 
 ### 🌪️ Audits (Tornado Cash)
@@ -18,7 +20,7 @@ In the interest of transparency, we would like to outline the modifications made
 
 **1. Implements `IKIP7Receiver` for compatibility with KIP7 (Klaytn's own fungible token standard):**
 
-The `IKIP7Receiver` interface includes the `onKIP7Received` function, which handles the receipt of KIP-7 tokens. KIP-7 smart contracts call this function on the recipient after a `safeTransfer`. This function may throw to revert and reject the transfer. Returning any value other than the magic value will result in the transaction being reverted.
+The `IKIP7Receiver` interface introduces the `onKIP7Received` function, which handles the receipt of KIP-7 tokens. KIP-7 smart contracts call this function on the recipient after a `safeTransfer`. Returning any value other than the magic value(`0x9d188c22`) will result in the transaction being reverted.
 
 ```solidity
 interface IKIP7Receiver {
@@ -31,7 +33,7 @@ interface IKIP7Receiver {
 }
 ```
 
-Contracts that define instances of Tonic, `ETHTonic` and `ERC20Tonic`, implements the `onKIP7Received` function as follows:
+Tonic Instances(`ETHTonic` and `ERC20Tonic`), implements the `onKIP7Received` function as follows:
 
 ```solidity
 function onKIP7Received(
@@ -56,24 +58,13 @@ uint256 public numberOfWithdrawals;
 
 **3. Implemented TonicFeePolicyManager to manage the policy of withdrawal fees:**
 
-Tonic uses the newly-added `TonicFeePolicyManager` contract to manage withdrawal fee policies. It includes three internal view functions, `_feeNumerator()`, `_feeDenominator()`, and `_treasury()`, which return the fee numerator, fee denominator, and treasury address, respectively.
+Tonic employs the newly-added `TonicFeePolicyManager` contract to manage withdrawal fee policies. You can view the contract [here](./contracts/TonicFeePolicyManager.sol).
+Our contracts have the `feePolicyManager` state (which is set by the initial `constructor` and cannot be changed afterward) and include three internal view functions: `_feeNumerator()`, `_feeDenominator()`, and `_treasury()`. These functions return the fee numerator, fee denominator, and treasury address, respectively, querying the `TonicFeePolicyManager` with each call.
 
-```solidity
-// Tonic
-function _feeNumerator() internal view virtual returns (uint256) {
-    return feePolicyManager.feeNumerator();
-}
+In the `_processWithdraw` function within the Tonic instances, the `treasuryFee` is calculated, and the `recipientAmount` is determined by subtracting the `treasuryFee` and `_relayerFee` from the denomination.
 
-function _feeDenominator() internal view virtual returns (uint256) {
-    return feePolicyManager.feeDenominator();
-}
-
-function _treasury() internal view virtual returns (address) {
-    return feePolicyManager.treasury();
-}
-```
-
-In Tonic instances, the `treasuryFee` is calculated, and the recipient amount is determined by subtracting the `treasuryFee` and `_relayerFee` from the denomination. For `ETHTonic` (Tonic Instance for Native Tokens), the `treasuryFee` is transferred to the treasury address. For `ERC20Tonic` (Tonic instance of ERC20/KIP7), the `treasuryFee` is safely transferred to the treasury address using the safeTransfer function.
+- For `ETHTonic` (Tonic Instance for Native Tokens), the `treasuryFee` is transferred to the treasury address.
+- For `ERC20Tonic` (Tonic instance of ERC20/KIP7), the `treasuryFee` is safely transferred to the treasury address using the `safeTransfer` function.
 
 ```solidity
 // Tonic instances
