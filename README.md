@@ -1,4 +1,8 @@
-# Tonic Core
+# [<img src="./.github/assets/logo.png" alt="" height="40" align="top" />](https://tonic.cash) Tonic Core
+
+> Privacy Transactions for Everyone, Powered by zk-SNARK Technology.
+
+This repository contains core smart contracts for [**Tonic**](https://tonic.cash), a decentralized privacy protocol that **implements private token transfers** on an EVM-based blockchain, making it harder to track them. Currently, it supports **Klaytn** and **WEMIX** as the **first-ever crypto mixer.**
 
 ## 🌊 Protocol Flow
 
@@ -124,3 +128,57 @@ if (treasuryFee > 0) {
     token.safeTransfer(_treasury(), treasuryFee);
 }
 ```
+
+## 📃 Deployed Contracts
+
+### 🟠 Klaytn Mainnet (Cypress)
+
+#### Tonic Instances
+
+| Name           | Contract Address                             |
+| -------------- | -------------------------------------------- |
+| KLAY `100`     | `0x033237b3d6ABCb7d48C5A40Ec3038A53aEc1b77e` |
+| KLAY `1000`    | `0x7b853e8387FC6bcFCAa9BDab8d0479E6c9E6782b` |
+| KLAY `10000`   | `0x457Caf470fB1031530E8cdD06703da7B1BbCCe04` |
+| KLAY `100000`  | `0x9694ea20de96D5E46C8FE1E7975D7a2C7C79Bf2c` |
+| oUSDT `100`    | `0x528AE79DAe416bf9623B94fA6Baef0FC3dd12ef8` |
+| oUSDT `1000`   | `0xc69C9bBabEDE59562Cd8a6F92Fa50aFf10D8310e` |
+| oUSDT `10000`  | `0x503d6D4E14A2A4f78f4c3E51c94F1F53C6bd6D96` |
+| oUSDT `100000` | `0x804aA592f7bF0B7EB98db08825D1106eC4822fb3` |
+| oETH `0.1`     | `0x70D8D865d556f7D03c463e296ac706CE11B73d4B` |
+| oETH `1`       | `0x402f2297f15b6fc9415D6F193ae882a3879b5F09` |
+| oETH `10`      | `0xCFa2494dddB338c2fd15224B4Eb9668a5C4de695` |
+| oETH `100`     | `0xD10aaD96548CAa7874e435Db0d9676b64554092b` |
+
+#### Periphery
+
+| Name                  | Contract Address                             |
+| --------------------- | -------------------------------------------- |
+| MulticallV2           | `0x5f5f0d1b9ff8b3dcace308e39b13b203354906e9` |
+| TonicFeePolicyManager | `0x5199e8b9d54786EB7d261FE09f51FcA64b61e9fD` |
+
+### 🟣 WEMIX Mainnet
+
+#### Tonic Instances
+
+| Name            | Contract Address                             |
+| --------------- | -------------------------------------------- |
+| WEMIX `100`     | `0x033237b3d6ABCb7d48C5A40Ec3038A53aEc1b77e` |
+| WEMIX `1000`    | `0x7b853e8387FC6bcFCAa9BDab8d0479E6c9E6782b` |
+| WEMIX `10000`   | `0x457Caf470fB1031530E8cdD06703da7B1BbCCe04` |
+| WEMIX `100000`  | `0x9694ea20de96D5E46C8FE1E7975D7a2C7C79Bf2c` |
+| WEMIX$ `100`    | `0x144120Ef18d4223Ab3f4695653a5755C23FBF469` |
+| WEMIX$ `1000`   | `0xc978f195C838d3344f74DDBA84235130B3091847` |
+| WEMIX$ `10000`  | `0xeD4a38cC990a6E5D817C9d89677c886994803d38` |
+| WEMIX$ `100000` | `0xAc04FDbADd7CF8d4BaD0F957d37e3fd0c093A9B6` |
+| ETH `0.1`       | `0x2D3bAeBa85D78D202887D34f5618380e90F3c272` |
+| ETH `1`         | `0xD2510D275dbca0fe333dAff8Eb51b9105f6aC212` |
+| ETH `10`        | `0xE1d1c5094d5eEF16E0207834b2E5FDf634278217` |
+| ETH `100`       | `0xfF30E4d7ec19a45710049033d1E51C1a6848E1FA` |
+
+#### Periphery
+
+| Name                  | Contract Address                             |
+| --------------------- | -------------------------------------------- |
+| MulticallV2           | `0x528AE79DAe416bf9623B94fA6Baef0FC3dd12ef8` |
+| TonicFeePolicyManager | `0x5199e8b9d54786EB7d261FE09f51FcA64b61e9fD` |
