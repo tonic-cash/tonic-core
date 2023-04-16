@@ -6,7 +6,7 @@ This repository contains core smart contracts for [**Tonic**](https://tonic.cash
 
 ## 🌊 Protocol Flow
 
-![Diagram for Protocol Flow](./.github/assets/tonic-diagram.jpg)
+[![Diagram for Protocol Flow](./.github/assets/tonic-diagram.jpg)](https://docs.tonic.cash/tonic/intro/protocol-flow)
 
 > This is how Tonic works under the hood. (v2023.04)
 
