@@ -12,18 +12,18 @@ import "../IKIP7.sol";
  * See https://kips.klaytn.com/KIPs/kip-7#metadata-extension
  */
 interface IKIP7Metadata is IKIP7 {
-    /**
-     * @dev Returns the name of the token.
-     */
-    function name() external view returns (string memory);
+  /**
+   * @dev Returns the name of the token.
+   */
+  function name() external view returns (string memory);
 
-    /**
-     * @dev Returns the symbol of the token.
-     */
-    function symbol() external view returns (string memory);
+  /**
+   * @dev Returns the symbol of the token.
+   */
+  function symbol() external view returns (string memory);
 
-    /**
-     * @dev Returns the decimals places of the token.
-     */
-    function decimals() external view returns (uint8);
+  /**
+   * @dev Returns the decimals places of the token.
+   */
+  function decimals() external view returns (uint8);
 }

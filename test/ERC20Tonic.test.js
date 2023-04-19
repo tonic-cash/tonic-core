@@ -1,11 +1,11 @@
 /* global artifacts, web3, contract */
 const BN = require('bn.js')
 
-const chai = require("chai");
-const chaiAsPromised = require("chai-as-promised");
-chai.use(require('bn-chai')(BN));
-chai.use(chaiAsPromised);
-chai.should();
+const chai = require('chai')
+const chaiAsPromised = require('chai-as-promised')
+chai.use(require('bn-chai')(BN))
+chai.use(chaiAsPromised)
+chai.should()
 
 const fs = require('fs')
 
@@ -29,8 +29,8 @@ const snarkjs = require('snarkjs')
 const bigInt = snarkjs.bigInt
 const crypto = require('crypto')
 const circomlib = require('circomlib')
-const MerkleTree = require('fixed-merkle-tree');
-const path = require('path');
+const MerkleTree = require('fixed-merkle-tree')
+const path = require('path')
 
 const rbigint = (nbytes) => snarkjs.bigInt.leBuff2int(crypto.randomBytes(nbytes))
 const pedersenHash = (data) => circomlib.babyJub.unpackPoint(circomlib.pedersenHash.hash(data))[0]
@@ -131,7 +131,7 @@ contract.only('ERC20Tonic', (accounts) => {
       await token.approve(tonic.address, tokenDenomination, { from: user })
       await tonic.deposit(toFixedHex(deposit.commitment), { from: user, gasPrice: '0' })
       const balanceUserAfter = await token.balanceOf(user)
-      expect(balanceUserAfter).should.be.eq.BN((balanceUserBefore).sub(toBN(tokenDenomination)))
+      expect(balanceUserAfter).should.be.eq.BN(balanceUserBefore.sub(toBN(tokenDenomination)))
 
       const { pathElements, pathIndices } = tree.path(0)
       // Circuit input
@@ -410,7 +410,9 @@ contract.only('ERC20Tonic', (accounts) => {
       expect(balanceRelayerAfter).should.be.eq.BN(toBN(balanceRelayerBefore))
       expect(ethBalanceOperatorAfter).should.be.eq.BN(toBN(ethBalanceOperatorBefore).add(feeBN))
       expect(balanceReceiverAfter).should.be.eq.BN(toBN(balanceReceiverBefore).add(toBN(tokenDenomination)))
-      expect(ethBalanceReceiverAfter).should.be.eq.BN(toBN(ethBalanceReceiverBefore).add(toBN(refund)).sub(feeBN))
+      expect(ethBalanceReceiverAfter).should.be.eq.BN(
+        toBN(ethBalanceReceiverBefore).add(toBN(refund)).sub(feeBN),
+      )
 
       expect(logs[0].event).to.equal('Withdrawal')
       expect(logs[0].args.nullifierHash).should.be.eq.BN(toBN(input.nullifierHash.toString()))
@@ -499,7 +501,9 @@ contract.only('ERC20Tonic', (accounts) => {
       expect(balanceRelayerAfter).should.be.eq.BN(toBN(balanceRelayerBefore))
       expect(ethBalanceOperatorAfter).should.be.eq.BN(toBN(ethBalanceOperatorBefore).add(feeBN))
       expect(balanceReceiverAfter).should.be.eq.BN(toBN(balanceReceiverBefore).add(toBN(tokenDenomination)))
-      expect(ethBalanceReceiverAfter).should.be.eq.BN(toBN(ethBalanceReceiverBefore).add(toBN(refund)).sub(feeBN))
+      expect(ethBalanceReceiverAfter).should.be.eq.BN(
+        toBN(ethBalanceReceiverBefore).add(toBN(refund)).sub(feeBN),
+      )
 
       expect(logs[0].event).to.equal('Withdrawal')
       expect(logs[0].args.nullifierHash).should.be.eq.BN(toBN(input.nullifierHash.toString()))

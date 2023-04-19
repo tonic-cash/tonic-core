@@ -15,14 +15,7 @@ module.exports = function (deployer, _network, accounts) {
     const hasher = await Hasher.deployed()
     const feePolicyManager = await TonicFeePolicyManager.deployed()
 
-    const token = await deployer.deploy(
-      ERC20Token,
-      'Test',
-      'TEST',
-      18,
-      10_000_000,
-      accounts[0],
-    )
+    const token = await deployer.deploy(ERC20Token, 'Test', 'TEST', 18, 10_000_000, accounts[0])
 
     const tonic = await deployer.deploy(
       ERC20Tonic,

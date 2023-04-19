@@ -38,12 +38,12 @@ The `IKIP7Receiver` interface introduces the `onKIP7Received` function, which ha
 
 ```solidity
 interface IKIP7Receiver {
-    function onKIP7Received(
-        address _operator,
-        address _from,
-        uint256 _amount,
-        bytes memory _data
-    ) external returns (bytes4);
+  function onKIP7Received(
+    address _operator,
+    address _from,
+    uint256 _amount,
+    bytes memory _data
+  ) external returns (bytes4);
 }
 ```
 
@@ -51,13 +51,13 @@ Tonic Instances(`ETHTonic` and `ERC20Tonic`), implements the `onKIP7Received` fu
 
 ```solidity
 function onKIP7Received(
-        address _operator,
-        address _from,
-        uint256 _amount,
-        bytes memory _data
-    ) external pure returns (bytes4) {
-        return 0x9d188c22;
-    }
+  address _operator,
+  address _from,
+  uint256 _amount,
+  bytes memory _data
+) external pure returns (bytes4) {
+  return 0x9d188c22;
+}
 ```
 
 **2. Make it possible for the `owner` to withdraw unrelated tokens(airdrops) from the contract:**

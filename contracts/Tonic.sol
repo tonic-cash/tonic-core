@@ -7,65 +7,65 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 interface IVerifier {
-    function verifyProof(bytes memory _proof, uint256[6] memory _input) external returns (bool);
+  function verifyProof(bytes memory _proof, uint256[6] memory _input) external returns (bool);
 }
 
 abstract contract Tonic is MerkleTreeWithHistory, Ownable, ReentrancyGuard {
-    IVerifier public immutable verifier;
-    TonicFeePolicyManager public feePolicyManager;
-    uint256 public denomination;
+  IVerifier public immutable verifier;
+  TonicFeePolicyManager public feePolicyManager;
+  uint256 public denomination;
 
-    mapping(bytes32 => bool) public nullifierHashes;
+  mapping(bytes32 => bool) public nullifierHashes;
 
-    // we store all commitments just to prevent accidental deposits with the same commitment
-    mapping(bytes32 => bool) public commitments;
+  // we store all commitments just to prevent accidental deposits with the same commitment
+  mapping(bytes32 => bool) public commitments;
 
-    event Deposit(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp);
-    event Withdrawal(address to, bytes32 nullifierHash, address indexed relayer, uint256 fee);
+  event Deposit(bytes32 indexed commitment, uint32 leafIndex, uint256 timestamp);
+  event Withdrawal(address to, bytes32 nullifierHash, address indexed relayer, uint256 fee);
 
-    // values to keep track of stats
-    uint256 public numberOfDeposits;
-    uint256 public numberOfWithdrawals;
+  // values to keep track of stats
+  uint256 public numberOfDeposits;
+  uint256 public numberOfWithdrawals;
 
-    /**
+  /**
       @dev The constructor
       @param _verifier the address of SNARK verifier for this contract
       @param _hasher the address of MiMC hash contract
       @param _denomination transfer amount for each deposit
       @param _merkleTreeHeight the height of deposits' Merkle Tree
     */
-    constructor(
-        IVerifier _verifier,
-        IHasher _hasher,
-        uint256 _denomination,
-        uint32 _merkleTreeHeight,
-        address payable _feePolicyManagerAddress
-    ) MerkleTreeWithHistory(_merkleTreeHeight, _hasher) {
-        require(_denomination > 0, "denomination should be greater than 0");
-        verifier = _verifier;
-        denomination = _denomination;
-        feePolicyManager = TonicFeePolicyManager(_feePolicyManagerAddress);
-    }
+  constructor(
+    IVerifier _verifier,
+    IHasher _hasher,
+    uint256 _denomination,
+    uint32 _merkleTreeHeight,
+    address payable _feePolicyManagerAddress
+  ) MerkleTreeWithHistory(_merkleTreeHeight, _hasher) {
+    require(_denomination > 0, "denomination should be greater than 0");
+    verifier = _verifier;
+    denomination = _denomination;
+    feePolicyManager = TonicFeePolicyManager(_feePolicyManagerAddress);
+  }
 
-    /**
+  /**
       @dev Deposit funds into the contract. The caller must send (for ETH) or approve (for ERC20) value equal to or `denomination` of this instance.
       @param _commitment the note commitment, which is PedersenHash(nullifier + secret)
       */
-    function deposit(bytes32 _commitment) external payable nonReentrant {
-        require(!commitments[_commitment], "The commitment has been submitted");
+  function deposit(bytes32 _commitment) external payable nonReentrant {
+    require(!commitments[_commitment], "The commitment has been submitted");
 
-        uint32 insertedIndex = _insert(_commitment);
-        commitments[_commitment] = true;
-        _processDeposit();
+    uint32 insertedIndex = _insert(_commitment);
+    commitments[_commitment] = true;
+    _processDeposit();
 
-        numberOfDeposits += 1;
-        emit Deposit(_commitment, insertedIndex, block.timestamp);
-    }
+    numberOfDeposits += 1;
+    emit Deposit(_commitment, insertedIndex, block.timestamp);
+  }
 
-    /** @dev this function is defined in a child contract */
-    function _processDeposit() internal virtual;
+  /** @dev this function is defined in a child contract */
+  function _processDeposit() internal virtual;
 
-    /**
+  /**
       @dev Withdraw a deposit from the contract. `proof` is a zkSNARK proof data, and input is an array of circuit public inputs
       `input` array consists of:
         - merkle root of all deposits in the contract
@@ -73,82 +73,82 @@ abstract contract Tonic is MerkleTreeWithHistory, Ownable, ReentrancyGuard {
         - the recipient of funds
         - optional fee that goes to the transaction sender (usually a relay)
     */
-    function withdraw(
-        bytes calldata _proof,
-        bytes32 _root,
-        bytes32 _nullifierHash,
-        address payable _recipient,
-        address payable _relayer,
-        uint256 _relayerFee,
-        uint256 _refund
-    ) external payable nonReentrant {
-        require(_relayerFee <= denomination, "Fee exceeds transfer value");
-        require(!nullifierHashes[_nullifierHash], "The note has been already spent");
-        require(isKnownRoot(_root), "Cannot find your merkle root");
+  function withdraw(
+    bytes calldata _proof,
+    bytes32 _root,
+    bytes32 _nullifierHash,
+    address payable _recipient,
+    address payable _relayer,
+    uint256 _relayerFee,
+    uint256 _refund
+  ) external payable nonReentrant {
+    require(_relayerFee <= denomination, "Fee exceeds transfer value");
+    require(!nullifierHashes[_nullifierHash], "The note has been already spent");
+    require(isKnownRoot(_root), "Cannot find your merkle root");
 
-        require(
-            verifier.verifyProof(
-                _proof,
-                [
-                    uint256(_root),
-                    uint256(_nullifierHash),
-                    uint256(uint160(address(_recipient))),
-                    uint256(uint160(address(_relayer))),
-                    _relayerFee,
-                    _refund
-                ]
-            ),
-            "Invalid withdraw proof"
-        );
+    require(
+      verifier.verifyProof(
+        _proof,
+        [
+          uint256(_root),
+          uint256(_nullifierHash),
+          uint256(uint160(address(_recipient))),
+          uint256(uint160(address(_relayer))),
+          _relayerFee,
+          _refund
+        ]
+      ),
+      "Invalid withdraw proof"
+    );
 
-        nullifierHashes[_nullifierHash] = true;
-        _processWithdraw(_recipient, _relayer, _relayerFee, _refund);
+    nullifierHashes[_nullifierHash] = true;
+    _processWithdraw(_recipient, _relayer, _relayerFee, _refund);
 
-        numberOfWithdrawals += 1;
-        emit Withdrawal(_recipient, _nullifierHash, _relayer, _relayerFee);
+    numberOfWithdrawals += 1;
+    emit Withdrawal(_recipient, _nullifierHash, _relayer, _relayerFee);
+  }
+
+  /** @dev this function is defined in a child contract */
+  function _processWithdraw(
+    address payable _recipient,
+    address payable _relayer,
+    uint256 _relayerFee,
+    uint256 _refund
+  ) internal virtual;
+
+  /** @dev whether a note is already spent */
+  function isSpent(bytes32 _nullifierHash) public view returns (bool) {
+    return nullifierHashes[_nullifierHash];
+  }
+
+  /** @dev whether an array of notes is already spent */
+  function isSpentArray(bytes32[] calldata _nullifierHashes) external view returns (bool[] memory spent) {
+    spent = new bool[](_nullifierHashes.length);
+    for (uint256 i = 0; i < _nullifierHashes.length; i++) {
+      if (isSpent(_nullifierHashes[i])) {
+        spent[i] = true;
+      }
     }
+  }
 
-    /** @dev this function is defined in a child contract */
-    function _processWithdraw(
-        address payable _recipient,
-        address payable _relayer,
-        uint256 _relayerFee,
-        uint256 _refund
-    ) internal virtual;
+  /** @dev returns the contract stats */
+  function getStats() external view returns (uint256 _denomination, uint256 _numberOfDeposits, uint256 _numberOfWithdrawals) {
+    return (denomination, numberOfDeposits, numberOfWithdrawals);
+  }
 
-    /** @dev whether a note is already spent */
-    function isSpent(bytes32 _nullifierHash) public view returns (bool) {
-        return nullifierHashes[_nullifierHash];
-    }
+  function getFeePolicyManagerAddress() public view returns (address) {
+    return address(feePolicyManager);
+  }
 
-    /** @dev whether an array of notes is already spent */
-    function isSpentArray(bytes32[] calldata _nullifierHashes) external view returns (bool[] memory spent) {
-        spent = new bool[](_nullifierHashes.length);
-        for (uint256 i = 0; i < _nullifierHashes.length; i++) {
-            if (isSpent(_nullifierHashes[i])) {
-                spent[i] = true;
-            }
-        }
-    }
+  function _feeNumerator() internal view virtual returns (uint256) {
+    return feePolicyManager.feeNumerator();
+  }
 
-    /** @dev returns the contract stats */
-    function getStats() external view returns (uint256 _denomination, uint256 _numberOfDeposits, uint256 _numberOfWithdrawals) {
-        return (denomination, numberOfDeposits, numberOfWithdrawals);
-    }
+  function _feeDenominator() internal view virtual returns (uint256) {
+    return feePolicyManager.feeDenominator();
+  }
 
-    function getFeePolicyManagerAddress() public view returns (address) {
-        return address(feePolicyManager);
-    }
-
-    function _feeNumerator() internal view virtual returns (uint256) {
-        return feePolicyManager.feeNumerator();
-    }
-
-    function _feeDenominator() internal view virtual returns (uint256) {
-        return feePolicyManager.feeDenominator();
-    }
-
-    function _treasury() internal view virtual returns (address) {
-        return feePolicyManager.treasury();
-    }
+  function _treasury() internal view virtual returns (address) {
+    return feePolicyManager.treasury();
+  }
 }
