@@ -195,23 +195,12 @@ describe('ETHTonic', () => {
       tree.insert(deposit.commitment)
 
       const balanceUserBefore = await ethers.provider.getBalance(user.address)
-
-      let receipt = await tonic.connect(user).deposit(toFixedHex(deposit.commitment), {
+      await tonic.connect(user).deposit(toFixedHex(deposit.commitment), {
         value,
         from: user.address,
       })
-      // const gasCost = await tonic.deposit(toFixedHex(deposit.commitment), {
-      //   value,
-      //   from: user.address,
-      //   gasPrice: '0',
-      // })
-      // gascost from receipt
-      const gasCost = (await receipt.wait()).gasUsed.mul(await ethers.provider.getGasPrice())
-
       const balanceUserAfter = await ethers.provider.getBalance(user.address)
-      let isBalanceValid = balanceUserAfter.lte(
-        BigNumber.from(balanceUserBefore).sub(BigNumber.from(value)).sub(BigNumber.from(gasCost)),
-      )
+      let isBalanceValid = balanceUserAfter.lte(BigNumber.from(balanceUserBefore).sub(BigNumber.from(value)))
       expect(isBalanceValid).to.equal(true)
 
       const { pathElements, pathIndices } = tree.path(0)
@@ -254,7 +243,7 @@ describe('ETHTonic', () => {
         toFixedHex(input.fee),
         toFixedHex(input.refund),
       ]
-      receipt = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address })
+      let receipt = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address })
       const events = (await receipt.wait()).events
 
       const balanceTonicAfter = await ethers.provider.getBalance(tonic.address)
