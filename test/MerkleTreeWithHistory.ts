@@ -47,7 +47,7 @@ describe('MerkleTreeWithHistory', () => {
     merkleTreeWithHistory = (await (
       await ethers.getContractFactory('MerkleTreeWithHistoryMock')
     ).deploy(levels, hasherInstance.address)) as MerkleTreeWithHistoryMock
-    snapshotId = await ethers.provider.send('evm_snapshot', [])
+    snapshotId = await takeSnapshot()
   })
 
   describe('#constructor', () => {
