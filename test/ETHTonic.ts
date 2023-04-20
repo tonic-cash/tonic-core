@@ -21,7 +21,6 @@ const FEE_NUMERATOR = 3
 const FEE_DENOMINATOR = 100
 const TREASURY_ADDRESS = '0x0000000000000000000000000000000000000000'
 
-// chai.use(solidity(BN))
 chai.use(chaiAsPromised)
 chai.should()
 
@@ -30,10 +29,11 @@ const buildGroth16 = require('websnark/src/groth16')
 const stringifyBigInts = require('websnark/tools/stringifybigint').stringifyBigInts
 const unstringifyBigInts2 = require('snarkjs/src/stringifybigint').unstringifyBigInts
 
-const bigInt = snarkjs.bigInt
+const bigInt = snarkjs.bigInt as any
 
-const rbigint = (nbytes: number) => snarkjs.bigInt.leBuff2int(crypto.randomBytes(nbytes))
-const pedersenHash = (data: any) => circomlib.babyJub.unpackPoint(circomlib.pedersenHash.hash(data))[0]
+const rbigint = (nbytes: number) => bigInt.leBuff2int(crypto.randomBytes(nbytes))
+const pedersenHash = (data: any) =>
+  (circomlib.babyJub as any).unpackPoint(circomlib.pedersenHash.hash(data))[0]
 const toFixedHex = (number: any, length = 32) =>
   '0x' +
   bigInt(number)
@@ -269,9 +269,8 @@ describe('ETHTonic', () => {
       expect(isBalanceValid).to.equal(true)
 
       // value - protocol fee
-      // FIXME: get percentage from feePolicyManager
       const expectedBalance = BigNumber.from(balanceReceiverBefore).add(BigNumber.from(value)).sub(feeBN)
-      const percentage = 97
+      const percentage = 100 - (FEE_NUMERATOR / FEE_DENOMINATOR) * 100
       const expectedBalance97Percent = expectedBalance.mul(percentage).div(100)
       const difference = expectedBalance.sub(expectedBalance97Percent)
 
