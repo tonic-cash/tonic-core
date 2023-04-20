@@ -9,6 +9,7 @@ import fs from 'fs'
 import { ethers } from 'hardhat'
 import path from 'path'
 import snarkjs from 'snarkjs'
+import { randomHex } from 'web3-utils'
 
 import Hasher from '../build/Hasher.json'
 import { ETHTonic } from '../typechain-types'
@@ -57,6 +58,8 @@ function snarkVerify(proof: any) {
   return snarkjs['groth'].isValid(verification_key, proof, proof.publicSignals)
 }
 
+type WithdrawArgs = [string, string, string, string, string, string]
+
 describe('ETHTonic', () => {
   let tonic: ETHTonic
   let sender: SignerWithAddress
@@ -84,6 +87,7 @@ describe('ETHTonic', () => {
     const feePolicyManager = await (
       await ethers.getContractFactory('TonicFeePolicyManager')
     ).deploy(FEE_NUMERATOR, FEE_DENOMINATOR, TREASURY_ADDRESS)
+
     tonic = (await tonicFactory.deploy(
       verifierInstance.address,
       hasherInstance.address,
@@ -91,12 +95,14 @@ describe('ETHTonic', () => {
       MERKLE_TREE_HEIGHT,
       feePolicyManager.address,
     )) as ETHTonic
+
     snapshotId = await takeSnapshot()
     groth16 = await buildGroth16()
     circuit = require('../constants/withdraw.json')
     proving_key = proving_key = fs.readFileSync(
       path.join(__dirname, '../constants/withdraw_proving_key.bin'),
     ).buffer
+
     accounts = await ethers.getSigners()
     ;[sender, relayer] = accounts
     operator = sender
@@ -182,6 +188,369 @@ describe('ETHTonic', () => {
     })
   })
 
+  describe('#withdraw', () => {
+    it('should work', async () => {
+      const deposit = generateDeposit()
+      const user = accounts[4]
+      tree.insert(deposit.commitment)
+
+      const balanceUserBefore = await ethers.provider.getBalance(user.address)
+
+      let receipt = await tonic.connect(user).deposit(toFixedHex(deposit.commitment), {
+        value,
+        from: user.address,
+      })
+      // const gasCost = await tonic.deposit(toFixedHex(deposit.commitment), {
+      //   value,
+      //   from: user.address,
+      //   gasPrice: '0',
+      // })
+      // gascost from receipt
+      const gasCost = (await receipt.wait()).gasUsed.mul(await ethers.provider.getGasPrice())
+
+      const balanceUserAfter = await ethers.provider.getBalance(user.address)
+      let isBalanceValid = balanceUserAfter.lte(
+        BigNumber.from(balanceUserBefore).sub(BigNumber.from(value)).sub(BigNumber.from(gasCost)),
+      )
+      expect(isBalanceValid).to.equal(true)
+
+      const { pathElements, pathIndices } = tree.path(0)
+
+      // Circuit input
+      const input = stringifyBigInts({
+        // public
+        root: tree.root(),
+        nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
+        relayer: operator.address,
+        recipient,
+        fee,
+        refund,
+
+        // private
+        nullifier: deposit.nullifier,
+        secret: deposit.secret,
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+      })
+
+      const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+      const { proof } = websnarkUtils.toSolidityInput(proofData)
+
+      const balanceTonicBefore = await ethers.provider.getBalance(tonic.address)
+      const balanceRelayerBefore = await ethers.provider.getBalance(relayer.address)
+      const balanceOperatorBefore = await ethers.provider.getBalance(operator.address)
+      const balanceReceiverBefore = await ethers.provider.getBalance(toFixedHex(recipient, 20))
+      let isSpent = await tonic.isSpent(toFixedHex(input.nullifierHash))
+      isSpent.should.be.equal(false)
+
+      // Uncomment to measure gas usage
+      // gas = await tonic.withdraw.estimateGas(proof, publicSignals, { from: relayer, gasPrice: '0' })
+      // console.log('withdraw gas:', gas)
+      const args: WithdrawArgs = [
+        toFixedHex(input.root),
+        toFixedHex(input.nullifierHash),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      receipt = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address })
+      const events = (await receipt.wait()).events
+
+      const balanceTonicAfter = await ethers.provider.getBalance(tonic.address)
+      const balanceRelayerAfter = await ethers.provider.getBalance(relayer.address)
+      const balanceOperatorAfter = await ethers.provider.getBalance(operator.address)
+      const balanceReceiverAfter = await ethers.provider.getBalance(toFixedHex(recipient, 20))
+      const feeBN = BigNumber.from(fee.toString())
+
+      isBalanceValid = balanceTonicAfter.lte(BigNumber.from(balanceTonicBefore).sub(BigNumber.from(value)))
+      expect(isBalanceValid).to.equal(true)
+      isBalanceValid = balanceOperatorAfter.gte(BigNumber.from(balanceOperatorBefore).add(feeBN))
+      expect(isBalanceValid).to.equal(true)
+
+      // value - protocol fee
+      // FIXME: get percentage from feePolicyManager
+      const expectedBalance = BigNumber.from(balanceReceiverBefore).add(BigNumber.from(value)).sub(feeBN)
+      const percentage = 97
+      const expectedBalance97Percent = expectedBalance.mul(percentage).div(100)
+      const difference = expectedBalance.sub(expectedBalance97Percent)
+
+      const lowerBound = expectedBalance97Percent.sub(difference)
+      const upperBound = expectedBalance97Percent.add(difference)
+      const isWithinRange =
+        BigNumber.from(balanceReceiverAfter).gte(lowerBound) &&
+        BigNumber.from(balanceReceiverAfter).lte(upperBound)
+      isWithinRange.should.be.true
+
+      expect(events?.[0].event).to.equal('Withdrawal')
+      expect(events?.[0].args?.nullifierHash).to.equal(toFixedHex(input.nullifierHash))
+      expect(events?.[0].args?.fee).to.equal(feeBN)
+      expect(events?.[0].args?.relayer).to.equal(operator.address)
+      isSpent = await tonic.isSpent(toFixedHex(input.nullifierHash))
+      expect(isSpent).to.equal(true)
+    })
+
+    it('should prevent double spend', async () => {
+      const deposit = generateDeposit()
+      tree.insert(deposit.commitment)
+      await tonic.connect(sender).deposit(toFixedHex(deposit.commitment), { value, from: sender.address })
+
+      const { pathElements, pathIndices } = tree.path(0)
+
+      const input = stringifyBigInts({
+        root: tree.root(),
+        nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
+        nullifier: deposit.nullifier,
+        relayer: operator.address,
+        recipient,
+        fee,
+        refund,
+        secret: deposit.secret,
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+      })
+      const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+      const { proof } = websnarkUtils.toSolidityInput(proofData)
+      const args: WithdrawArgs = [
+        toFixedHex(input.root),
+        toFixedHex(input.nullifierHash),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address }).should.be.fulfilled
+      const error = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address }).should
+        .rejected
+      expect(error.message).to.include('The note has been already spent')
+    })
+
+    it('should prevent double spend with overflow', async () => {
+      const deposit = generateDeposit()
+      tree.insert(deposit.commitment)
+      await tonic.connect(sender).deposit(toFixedHex(deposit.commitment), { value, from: sender.address })
+
+      const { pathElements, pathIndices } = tree.path(0)
+
+      const input = stringifyBigInts({
+        root: tree.root(),
+        nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
+        nullifier: deposit.nullifier,
+        relayer: operator.address,
+        recipient,
+        fee,
+        refund,
+        secret: deposit.secret,
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+      })
+      const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+      const { proof } = websnarkUtils.toSolidityInput(proofData)
+      const args: WithdrawArgs = [
+        toFixedHex(input.root),
+        toFixedHex(
+          BigNumber.from(input.nullifierHash).add(
+            BigNumber.from('21888242871839275222246405745257275088548364400416034343698204186575808495617'),
+          ),
+        ),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      const error = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address }).should
+        .rejected
+      expect(error.message).to.include('verifier-gte-snark-scalar-field')
+    })
+
+    it('fee should be less or equal transfer value', async () => {
+      const deposit = generateDeposit()
+      tree.insert(deposit.commitment)
+      await tonic.connect(sender).deposit(toFixedHex(deposit.commitment), { value, from: sender.address })
+
+      const { pathElements, pathIndices } = tree.path(0)
+      const largeFee = bigInt(value).add(bigInt(1))
+      const input = stringifyBigInts({
+        root: tree.root(),
+        nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
+        nullifier: deposit.nullifier,
+        relayer: operator.address,
+        recipient,
+        fee: largeFee,
+        refund,
+        secret: deposit.secret,
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+      })
+
+      const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+      const { proof } = websnarkUtils.toSolidityInput(proofData)
+      const args: WithdrawArgs = [
+        toFixedHex(input.root),
+        toFixedHex(input.nullifierHash),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      const error = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address }).should
+        .rejected
+      expect(error.message).to.include('Fee exceeds transfer value')
+    })
+
+    it('should throw for corrupted merkle tree root', async () => {
+      const deposit = generateDeposit()
+      tree.insert(deposit.commitment)
+      await tonic.connect(sender).deposit(toFixedHex(deposit.commitment), { value, from: sender.address })
+
+      const { pathElements, pathIndices } = tree.path(0)
+
+      const input = stringifyBigInts({
+        nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
+        root: tree.root(),
+        nullifier: deposit.nullifier,
+        relayer: operator.address,
+        recipient,
+        fee,
+        refund,
+        secret: deposit.secret,
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+      })
+
+      const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+      const { proof } = websnarkUtils.toSolidityInput(proofData)
+
+      const args: WithdrawArgs = [
+        toFixedHex(randomHex(32)),
+        toFixedHex(input.nullifierHash),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      const error = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address }).should
+        .rejected
+      expect(error.message).to.include('Cannot find your merkle root')
+    })
+
+    it('should reject with tampered public inputs', async () => {
+      const deposit = generateDeposit()
+      tree.insert(deposit.commitment)
+      await tonic.connect(sender).deposit(toFixedHex(deposit.commitment), { value, from: sender.address })
+
+      let { pathElements, pathIndices } = tree.path(0)
+
+      const input = stringifyBigInts({
+        root: tree.root(),
+        nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
+        nullifier: deposit.nullifier,
+        relayer: operator.address,
+        recipient,
+        fee,
+        refund,
+        secret: deposit.secret,
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+      })
+      const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+      let { proof } = websnarkUtils.toSolidityInput(proofData)
+      const args: WithdrawArgs = [
+        toFixedHex(input.root),
+        toFixedHex(input.nullifierHash),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      let incorrectArgs: WithdrawArgs
+      const originalProof = proof.slice()
+
+      // recipient
+      incorrectArgs = [
+        toFixedHex(input.root),
+        toFixedHex(input.nullifierHash),
+        toFixedHex('0x0000000000000000000000007a1f9131357404ef86d7c38dbffed2da70321337', 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      let error = await tonic.connect(relayer).withdraw(proof, ...incorrectArgs, { from: relayer.address })
+        .should.rejected
+      expect(error.message).to.include('Invalid withdraw proof')
+
+      // fee
+      incorrectArgs = [
+        toFixedHex(input.root),
+        toFixedHex(input.nullifierHash),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex('0x000000000000000000000000000000000000000000000000015345785d8a0000'),
+        toFixedHex(input.refund),
+      ]
+      error = await tonic.connect(relayer).withdraw(proof, ...incorrectArgs, { from: relayer.address }).should
+        .rejected
+      expect(error.message).to.include('Invalid withdraw proof')
+
+      // nullifier
+      incorrectArgs = [
+        toFixedHex(input.root),
+        toFixedHex('0x00abdfc78211f8807b9c6504a6e537e71b8788b2f529a95f1399ce124a8642ad'),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      error = await tonic.connect(relayer).withdraw(proof, ...incorrectArgs, { from: relayer.address }).should
+        .rejected
+      expect(error.message).to.include('Invalid withdraw proof')
+
+      // proof itself
+      proof = '0xbeef' + proof.substr(6)
+      await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address }).should.rejected
+
+      // should work with original values
+      await tonic.connect(relayer).withdraw(originalProof, ...args, { from: relayer.address }).should.be
+        .fulfilled
+    })
+
+    it('should reject with non zero refund', async () => {
+      const deposit = generateDeposit()
+      tree.insert(deposit.commitment)
+      await tonic.connect(sender).deposit(toFixedHex(deposit.commitment), { value, from: sender.address })
+
+      const { pathElements, pathIndices } = tree.path(0)
+
+      const input = stringifyBigInts({
+        nullifierHash: pedersenHash(deposit.nullifier.leInt2Buff(31)),
+        root: tree.root(),
+        nullifier: deposit.nullifier,
+        relayer: operator.address,
+        recipient,
+        fee,
+        refund: bigInt(1),
+        secret: deposit.secret,
+        pathElements: pathElements,
+        pathIndices: pathIndices,
+      })
+
+      const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
+      const { proof } = websnarkUtils.toSolidityInput(proofData)
+
+      const args: WithdrawArgs = [
+        toFixedHex(input.root),
+        toFixedHex(input.nullifierHash),
+        toFixedHex(input.recipient, 20),
+        toFixedHex(input.relayer, 20),
+        toFixedHex(input.fee),
+        toFixedHex(input.refund),
+      ]
+      const error = await tonic.connect(relayer).withdraw(proof, ...args, { from: relayer.address }).should
+        .rejected
+      expect(error.message).to.include('Refund value is supposed to be zero for ETH instance')
+    })
+  })
+
   describe('#isSpent', () => {
     it('should work', async () => {
       const deposit1 = generateDeposit()
@@ -213,7 +582,7 @@ describe('ETHTonic', () => {
       const proofData = await websnarkUtils.genWitnessAndProve(groth16, input, circuit, proving_key)
       const { proof } = websnarkUtils.toSolidityInput(proofData)
 
-      const args: [string, string, string, string, string, string] = [
+      const args: WithdrawArgs = [
         toFixedHex(input.root),
         toFixedHex(input.nullifierHash),
         toFixedHex(input.recipient, 20),
