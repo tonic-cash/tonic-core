@@ -269,17 +269,17 @@ describe('ETHTonic', () => {
       expect(isBalanceValid).to.equal(true)
 
       // value - protocol fee
-      const expectedBalance = BigNumber.from(balanceReceiverBefore).add(BigNumber.from(value)).sub(feeBN)
+      const expectedBalance = BigNumber.from(balanceReceiverBefore).add(BigNumber.from(value))
       const percentage = 100 - (FEE_NUMERATOR / FEE_DENOMINATOR) * 100
-      const expectedBalance97Percent = expectedBalance.mul(percentage).div(100)
-      const difference = expectedBalance.sub(expectedBalance97Percent)
+      const expectedBalanceAfterProtocolFee = expectedBalance.mul(percentage).div(100).sub(feeBN)
+      const difference = expectedBalance.sub(expectedBalanceAfterProtocolFee)
 
-      const lowerBound = expectedBalance97Percent.sub(difference)
-      const upperBound = expectedBalance97Percent.add(difference)
+      const lowerBound = expectedBalanceAfterProtocolFee.sub(difference)
+      const upperBound = expectedBalanceAfterProtocolFee.add(difference)
       const isWithinRange =
         BigNumber.from(balanceReceiverAfter).gte(lowerBound) &&
         BigNumber.from(balanceReceiverAfter).lte(upperBound)
-      isWithinRange.should.be.true
+      expect(isWithinRange).to.equal(true)
 
       expect(events?.[0].event).to.equal('Withdrawal')
       expect(events?.[0].args?.nullifierHash).to.equal(toFixedHex(input.nullifierHash))
