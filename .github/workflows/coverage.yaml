@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: yarn --frozen-lockfile
       - name: Measure Coverage
-        run: yarn coverage
+        run: yarn compile && yarn coverage
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v3
         with:

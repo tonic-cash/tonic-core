@@ -11,7 +11,8 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "format": "prettier --write .",
-    "coverage": "npx hardhat coverage"
+    "compile": "hardhat compile",
+    "coverage": "hardhat coverage"
   },
   "dependencies": {
     "@openzeppelin/contracts": "4.8.2"
