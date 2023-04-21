@@ -10,7 +10,7 @@ import { ethers } from 'hardhat'
 import path from 'path'
 import snarkjs from 'snarkjs'
 import Hasher from '../build/Hasher.json'
-import { BadRecipient, ERC20Token, ERC20Tonic } from '../typechain-types'
+import { BadRecipient, ERC20Token, ERC20Tonic, KIP7Token } from '../typechain-types'
 import { revertToSnapshot, takeSnapshot } from './utils/snapshot'
 
 chai.use(chaiAsPromised)
@@ -277,35 +277,35 @@ describe('ERC20Tonic', () => {
     })
   })
 
-  describe('Token Transfers', function () {
+  describe('Token Transfers & KIP7', function () {
     let owner: SignerWithAddress
     let stranger: SignerWithAddress
-    let airdropToken: ERC20Token
+    let airdropToken: KIP7Token
     let amount: BigNumber
 
     beforeEach(async function () {
       ;[owner, stranger] = await ethers.getSigners()
 
-      const TokenFactory = await ethers.getContractFactory('ERC20Token')
+      const TokenFactory = await ethers.getContractFactory('KIP7Token')
       airdropToken = (await TokenFactory.deploy(
         'Airdrop',
         'ADT',
         BigNumber.from(18),
         BigNumber.from(0),
         owner.address,
-      )) as ERC20Token
+      )) as KIP7Token
       amount = BigNumber.from(500).mul(BigNumber.from(10).pow(18))
       await airdropToken.mint(owner.address, amount)
     })
 
-    it('can receive ERC20 tokens', async function () {
+    it('can receive KIP7 tokens', async function () {
       await airdropToken.transfer(tonic.address, amount)
 
       const recipientBalance = await airdropToken.balanceOf(tonic.address)
       expect(recipientBalance).to.equal(amount)
     })
 
-    it('can transfer ERC20 tokens to owner', async function () {
+    it('can transfer KIP7 tokens to owner', async function () {
       await airdropToken.transfer(tonic.address, amount)
 
       let ownerBalance = await airdropToken.balanceOf(owner.address)
