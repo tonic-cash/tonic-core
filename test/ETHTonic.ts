@@ -610,14 +610,14 @@ describe('ETHTonic', () => {
     })
 
     it('can receive KIP7 tokens', async function () {
-      await token.transfer(tonic.address, amount)
+      await token['safeTransfer(address,uint256)'](tonic.address, amount)
 
       const recipientBalance = await token.balanceOf(tonic.address)
       expect(recipientBalance).to.equal(amount)
     })
 
     it('can transfer KIP7 tokens to owner', async function () {
-      await token.transfer(tonic.address, amount)
+      await token['safeTransfer(address,uint256)'](tonic.address, amount)
 
       let ownerBalance = await token.balanceOf(owner.address)
       expect(ownerBalance).to.equal(BigNumber.from(0))
@@ -628,7 +628,7 @@ describe('ETHTonic', () => {
     })
 
     it('reverts if not called by owner', async function () {
-      await token.transfer(tonic.address, amount)
+      await token['safeTransfer(address,uint256)'](tonic.address, amount)
 
       const ownerBalance = await token.balanceOf(owner.address)
       expect(ownerBalance).to.equal(BigNumber.from(0))

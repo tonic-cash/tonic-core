@@ -299,14 +299,14 @@ describe('ERC20Tonic', () => {
     })
 
     it('can receive KIP7 tokens', async function () {
-      await airdropToken.transfer(tonic.address, amount)
+      await airdropToken['safeTransfer(address,uint256)'](tonic.address, amount)
 
       const recipientBalance = await airdropToken.balanceOf(tonic.address)
       expect(recipientBalance).to.equal(amount)
     })
 
     it('can transfer KIP7 tokens to owner', async function () {
-      await airdropToken.transfer(tonic.address, amount)
+      await airdropToken['safeTransfer(address,uint256)'](tonic.address, amount)
 
       let ownerBalance = await airdropToken.balanceOf(owner.address)
       expect(ownerBalance).to.equal(BigNumber.from(0))
@@ -326,7 +326,7 @@ describe('ERC20Tonic', () => {
     })
 
     it('reverts if not called by owner', async function () {
-      await airdropToken.transfer(tonic.address, amount)
+      await airdropToken['safeTransfer(address,uint256)'](tonic.address, amount)
 
       const ownerBalance = await airdropToken.balanceOf(owner.address)
       expect(ownerBalance).to.equal(BigNumber.from(0))
