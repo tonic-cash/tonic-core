@@ -1,5 +1,7 @@
 # [<img src="./.github/assets/logo.png" alt="" height="40" align="top" />](https://tonic.cash) Tonic Core
 
+[![codecov](https://codecov.io/github/tonic-cash/tonic-core/branch/main/graph/badge.svg?token=OFTHDO2HES)](https://codecov.io/github/tonic-cash/tonic-core)
+
 > Privacy Transactions for Everyone, Powered by zk-SNARK Technology.
 
 This repository contains core smart contracts for [**Tonic**](https://tonic.cash), a decentralized privacy protocol that **implements private token transfers** on an EVM-based blockchain, making it harder to track them. Currently, it supports **Klaytn** and **WEMIX** as the **first-ever crypto mixer.**
@@ -15,7 +17,7 @@ This repository contains core smart contracts for [**Tonic**](https://tonic.cash
 ### 🔒 Trusted Setup (Tornado Cash)
 
 Zero-knowledge proofs are cryptographic techniques that enable one party to prove knowledge of specific information without revealing the actual data. In the context of Tonic, they are essential for ensuring privacy in transactions.
-
+`
 Tonic takes advantage of [Tornado Cash](https://github.com/tornadocash)'s Trusted Setup, which has received contributions from over 1,100 participants, making it one of the most extensive and secure setups available. The extensive participation in the Trusted Setup ensures the generation of robust and secure parameters, which are vital for creating zero-knowledge proofs.
 
 By leveraging the proven open-source keys from Tornado Cash's Trusted Setup, Tonic enhances its censorship resistance and transparency. This, in turn, significantly improves the platform's overall security and reliability, providing users with a dependable and privacy-preserving solution for transactions.
