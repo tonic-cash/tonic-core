@@ -277,6 +277,65 @@ describe('ERC20Tonic', () => {
     })
   })
 
+  describe('Token Transfers', function () {
+    let owner: SignerWithAddress
+    let stranger: SignerWithAddress
+    let airdropToken: ERC20Token
+    let amount: BigNumber
+
+    beforeEach(async function () {
+      ;[owner, stranger] = await ethers.getSigners()
+
+      const TokenFactory = await ethers.getContractFactory('ERC20Token')
+      airdropToken = (await TokenFactory.deploy(
+        'Airdrop',
+        'ADT',
+        BigNumber.from(18),
+        BigNumber.from(0),
+        owner.address,
+      )) as ERC20Token
+      amount = BigNumber.from(500).mul(BigNumber.from(10).pow(18))
+      await airdropToken.mint(owner.address, amount)
+    })
+
+    it('can receive ERC20 tokens', async function () {
+      await airdropToken.transfer(tonic.address, amount)
+
+      const recipientBalance = await airdropToken.balanceOf(tonic.address)
+      expect(recipientBalance).to.equal(amount)
+    })
+
+    it('can transfer ERC20 tokens to owner', async function () {
+      await airdropToken.transfer(tonic.address, amount)
+
+      let ownerBalance = await airdropToken.balanceOf(owner.address)
+      expect(ownerBalance).to.equal(BigNumber.from(0))
+
+      await tonic['transfer(address,address,uint256)'](owner.address, airdropToken.address, amount)
+      ownerBalance = await airdropToken.balanceOf(owner.address)
+      expect(ownerBalance).to.equal(amount)
+    })
+
+    it('reverts if requested token is deposit token', async function () {
+      await token.mint(owner.address, amount)
+      await token.transfer(tonic.address, amount)
+
+      expect(await tonic.token()).to.equal(token.address)
+      const error = await tonic['transfer(address,address,uint256)'](owner.address, token.address, amount).should.rejected
+      expect(error.message).to.include('token address should not be the same as deposit token')
+    })
+
+    it('reverts if not called by owner', async function () {
+      await airdropToken.transfer(tonic.address, amount)
+
+      const ownerBalance = await airdropToken.balanceOf(owner.address)
+      expect(ownerBalance).to.equal(BigNumber.from(0))
+
+      const error = await tonic.connect(stranger)['transfer(address,address,uint256)'](stranger.address, airdropToken.address, amount).should.rejected
+      expect(error.message).to.include('Ownable: caller is not the owner')
+    })
+  })
+
   afterEach(async () => {
     await revertToSnapshot(snapshotId)
     // eslint-disable-next-line require-atomic-updates

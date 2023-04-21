@@ -12,7 +12,7 @@ import snarkjs from 'snarkjs'
 import { randomHex } from 'web3-utils'
 
 import Hasher from '../build/Hasher.json'
-import { ETHTonic } from '../typechain-types'
+import { ERC20Token, ETHTonic } from '../typechain-types'
 import { revertToSnapshot, takeSnapshot } from './utils/snapshot'
 
 const ETH_AMOUNT = '1000000000000000000'
@@ -585,6 +585,58 @@ describe('ETHTonic', () => {
       const nullifierHash2 = toFixedHex(pedersenHash(deposit2.nullifier.leInt2Buff(31)))
       const spentArray = await tonic.isSpentArray([nullifierHash1, nullifierHash2])
       spentArray.should.deep.equal([false, true])
+    })
+  })
+
+  describe('Token Transfers', function () {
+    let owner: SignerWithAddress
+    let stranger: SignerWithAddress
+    let token: ERC20Token
+    let amount: BigNumber
+
+    beforeEach(async function () {
+      ;[owner, stranger] = await ethers.getSigners()
+
+      const TokenFactory = await ethers.getContractFactory('ERC20Token')
+      token = (await TokenFactory.deploy(
+        'Airdrop',
+        'ADT',
+        BigNumber.from(18),
+        BigNumber.from(0),
+        owner.address,
+      )) as ERC20Token
+      amount = BigNumber.from(500).mul(BigNumber.from(10).pow(18))
+      await token.mint(owner.address, amount)
+    })
+
+    it('can receive ERC20 tokens', async function () {
+      await token.transfer(tonic.address, amount)
+
+      const recipientBalance = await token.balanceOf(tonic.address)
+      expect(recipientBalance).to.equal(amount)
+    })
+
+    it('can transfer ERC20 tokens to owner', async function () {
+      await token.transfer(tonic.address, amount)
+
+      let ownerBalance = await token.balanceOf(owner.address)
+      expect(ownerBalance).to.equal(BigNumber.from(0))
+
+      await tonic.transfer(owner.address, token.address, amount)
+      ownerBalance = await token.balanceOf(owner.address)
+      expect(ownerBalance).to.equal(amount)
+    })
+
+    it('reverts if not called by owner', async function () {
+      await token.transfer(tonic.address, amount)
+
+      const ownerBalance = await token.balanceOf(owner.address)
+      expect(ownerBalance).to.equal(BigNumber.from(0))
+
+      const error = await tonic
+        .connect(stranger)
+        ['transfer(address,address,uint256)'](stranger.address, token.address, amount).should.rejected
+      expect(error.message).to.include('Ownable: caller is not the owner')
     })
   })
 
