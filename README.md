@@ -8,6 +8,8 @@ This repository contains core smart contracts for [**Tonic**](https://tonic.cash
 
 - **✈️ App: [tonic.cash](https://tonic.cash)**
 - **✈️ Docs: [docs.tonic.cash](https://docs.tonic.cash)**
+- **🛫 Twitter: [@tonic_cash](https://twitter.com/tonic_cash)**
+- **🛫 Telegram (Channel): [@tonic_cash](https://t.me/tonic_cash)**
 
 ## 🌊 Protocol Flow
 
