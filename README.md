@@ -4,7 +4,7 @@
 
 > Privacy Transactions for Everyone, Powered by zk-SNARK Technology.
 
-This repository contains core smart contracts for [**Tonic (토닉)**](https://tonic.cash), a decentralized privacy protocol that **implements private token transfers** on an EVM-based blockchain, making it harder to track them. Currently, it supports **Klaytn** and **WEMIX** as the **first-ever crypto mixer.**
+This repository contains core smart contracts for [**Tonic(토닉)**](https://tonic.cash), a decentralized privacy protocol that **implements private token transfers** on an EVM-based blockchain, making it harder to track them. Currently, it supports **Klaytn** and **WEMIX** as the **first-ever crypto mixer.**
 
 - **✈️ App: [tonic.cash](https://tonic.cash)**
 - **✈️ Docs: [docs.tonic.cash](https://docs.tonic.cash)**
