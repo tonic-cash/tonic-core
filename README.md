@@ -22,7 +22,7 @@ This repository contains core smart contracts for [**Tonic(토닉)**](https://to
 ### 🔒 Trusted Setup (Tornado Cash)
 
 Zero-knowledge proofs are cryptographic techniques that enable one party to prove knowledge of specific information without revealing the actual data. In the context of Tonic, they are essential for ensuring privacy in transactions.
-`
+
 Tonic takes advantage of [Tornado Cash](https://github.com/tornadocash)'s Trusted Setup, which has received contributions from over 1,100 participants, making it one of the most extensive and secure setups available. The extensive participation in the Trusted Setup ensures the generation of robust and secure parameters, which are vital for creating zero-knowledge proofs.
 
 By leveraging the proven open-source keys from Tornado Cash's Trusted Setup, Tonic enhances its censorship resistance and transparency. This, in turn, significantly improves the platform's overall security and reliability, providing users with a dependable and privacy-preserving solution for transactions.
