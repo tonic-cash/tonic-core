@@ -116,7 +116,7 @@ uint256 public numberOfWithdrawals;
 
 **4. Implemented TonicFeePolicyManager to manage the policy of withdrawal fees:**
 
-Tonic employs the newly-added `TonicFeePolicyManager` contract to manage withdrawal fee policies. You can view the code [here](./contracts/TonicFeePolicyManager.sol).
+Tonic employs the newly-added `TonicFeePolicyManager` contract to manage withdrawal fee policies. You can view the code [here](./contracts/classic/TonicFeePolicyManager.sol).
 Our contracts have the `feePolicyManager` state (which is set by the initial `constructor` and cannot be changed afterward) and include three internal view functions: `_feeNumerator()`, `_feeDenominator()`, and `_treasury()`. These functions return the fee numerator, fee denominator, and treasury address, respectively, querying the `TonicFeePolicyManager` with each call.
 
 In the `_processWithdraw` function within the Tonic instances, the `treasuryFee` is calculated, and the `recipientAmount` is determined by subtracting the `treasuryFee` and `_relayerFee` from the denomination.
